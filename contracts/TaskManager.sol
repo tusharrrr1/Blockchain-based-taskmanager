@@ -8,51 +8,51 @@ contract TaskManager is Ownable {
         uint256 id;
         string title;
         string description;
-        bool isCompleted;
+        bool completed;
         address owner;
     }
 
+    uint256 public taskIdCounter;
     mapping(uint256 => Task) public tasks;
-    uint256 private taskCounter;
 
-    event TaskCreated(uint256 id, string title, address owner);
+    event TaskAdded(uint256 id, string title, string description, address owner);
     event TaskCompleted(uint256 id);
-    event TaskUpdated(uint256 id, string title, string description);
+    event TaskEdited(uint256 id, string title, string description);
     event TaskDeleted(uint256 id);
 
+    // Pass the deployer's address as the initialOwner to Ownable
     constructor() Ownable(msg.sender) {}
 
     function addTask(string memory _title, string memory _description) public {
-        uint256 taskId = taskCounter++; // Increment taskCounter
-        tasks[taskId] = Task(taskId, _title, _description, false, msg.sender);
-        emit TaskCreated(taskId, _title, msg.sender);
+        taskIdCounter++;
+        tasks[taskIdCounter] = Task(taskIdCounter, _title, _description, false, msg.sender);
+        emit TaskAdded(taskIdCounter, _title, _description, msg.sender);
     }
 
-    function completeTask(uint256 _taskId) public {
-        require(tasks[_taskId].owner == msg.sender, "Not task owner");
-        tasks[_taskId].isCompleted = true;
+    function markTaskCompleted(uint256 _taskId) public {
+        require(tasks[_taskId].owner == msg.sender, "Not the task owner");
+        tasks[_taskId].completed = true;
         emit TaskCompleted(_taskId);
     }
 
     function editTask(uint256 _taskId, string memory _title, string memory _description) public {
-        require(tasks[_taskId].owner == msg.sender, "Not task owner");
+        require(tasks[_taskId].owner == msg.sender, "Not the task owner");
         tasks[_taskId].title = _title;
         tasks[_taskId].description = _description;
-        emit TaskUpdated(_taskId, _title, _description);
+        emit TaskEdited(_taskId, _title, _description);
     }
 
     function deleteTask(uint256 _taskId) public {
-        require(tasks[_taskId].owner == msg.sender, "Not task owner");
+        require(tasks[_taskId].owner == msg.sender, "Not the task owner");
         delete tasks[_taskId];
         emit TaskDeleted(_taskId);
     }
 
-    function getTask(uint256 _taskId) public view returns (Task memory) {
-        return tasks[_taskId];
-    }
-
-    // 🔥 New function to fetch task count
-    function getTaskCount() public view returns (uint256) {
-        return taskCounter;
+    function getAllTasks() public view returns (Task[] memory) {
+        Task[] memory taskList = new Task[](taskIdCounter);
+        for (uint256 i = 1; i <= taskIdCounter; i++) {
+            taskList[i - 1] = tasks[i];
+        }
+        return taskList;
     }
 }
