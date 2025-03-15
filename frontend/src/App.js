@@ -1,100 +1,120 @@
-import { useState, useEffect } from "react";
-import { ethers } from "ethers";
-import TaskManagerABI from "./TaskManager.json"; // ABI file
+import React, { useState, useEffect } from "react";
+import { BrowserProvider, Contract } from "ethers";
+import TaskManagerArtifact from "./TaskManager.json"; 
+import { Button, TextField, Card, CardContent, Typography, Container, List, ListItem, ListItemText } from "@mui/material";
 
-const contractAddress = "0x12283c1BBa71c19dfe03F372C5B47DB3A07f3fBB";
-const abi = TaskManagerABI.abi; // Ensure ABI is correct
+const TaskManagerABI = TaskManagerArtifact.abi; // Extract the ABI array
+const contractAddress = "0x7d274F2C30C2F4A458F15Ae8ef7a3608d140828D"; // Replace with your contract address
 
 function App() {
   const [tasks, setTasks] = useState([]);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [provider, setProvider] = useState(null);
+  const [signer, setSigner] = useState(null);
   const [contract, setContract] = useState(null);
-  const [account, setAccount] = useState("");
 
+  // Log the ABI to verify it's correct
+  console.log("ABI:", TaskManagerABI);
+
+  // Initialize provider, signer, and contract
   useEffect(() => {
-    const loadBlockchainData = async () => {
-      if (!window.ethereum) {
-        console.error("❌ MetaMask is not installed!");
-        return;
-      }
-      try {
-        const provider = new ethers.BrowserProvider(window.ethereum);
-
-        // Check if accounts are already connected
-        const accounts = await provider.send("eth_accounts", []);
-        if (accounts.length > 0) {
-          setAccount(accounts[0]); // Set account if already connected
-        } else {
-          const newAccounts = await provider.send("eth_requestAccounts", []);
-          setAccount(newAccounts[0]);
-        }
-
-        const signer = await provider.getSigner(); // Await signer
-        const taskContract = new ethers.Contract(contractAddress, abi, signer);
-        setContract(taskContract);
-      } catch (error) {
-        console.error("❌ Error loading contract:", error);
-      }
-    };
-    loadBlockchainData();
+    initialize();
   }, []);
 
-  const loadTasks = async () => {
-    if (!contract) {
-      console.error("Contract is not initialized.");
-      return;
-    }
-  
-    console.log("Fetching tasks...");
-  
-    try {
-      const taskCount = await contract.getTaskCount(); // 🔥 Now this function exists
-      let fetchedTasks = [];
-  
-      for (let i = 0; i < taskCount; i++) {
-        try {
-          let task = await contract.getTask(i);
-          console.log(`Task ${i}:`, task);
-          fetchedTasks.push(task);
-        } catch (error) {
-          console.error(`Error fetching task ${i}:`, error);
-        }
-      }
-  
-      setTasks(fetchedTasks);
-    } catch (error) {
-      console.error("Error fetching tasks:", error);
+  const initialize = async () => {
+    if (window.ethereum) {
+      const provider = new BrowserProvider(window.ethereum);
+      await provider.send("eth_requestAccounts", []); // Request account access
+      const signer = await provider.getSigner();
+      const contract = new Contract(contractAddress, TaskManagerABI, signer); // Pass ABI as an array
+      setProvider(provider);
+      setSigner(signer);
+      setContract(contract);
+      fetchTasks(contract); // Fetch tasks after initializing
+    } else {
+      alert("Please install MetaMask!");
     }
   };
-  
-        
 
-  const addTask = async (title, description) => {
-    if (!contract) return;
+  // Fetch all tasks from the smart contract
+  const fetchTasks = async (contract) => {
     try {
-      let tx = await contract.addTask(title, description);
-      await tx.wait(); // Wait for transaction to be mined
-      console.log("✅ Task added successfully!");
-      loadTasks();
+      const tasks = await contract.getAllTasks();
+      setTasks(tasks);
     } catch (error) {
-      console.error("❌ Error adding task:", error);
+      console.error("Error fetching tasks:", error);
+      alert("Failed to fetch tasks. Check the console for details.");
+    }
+  };
+
+  // Add a new task
+  const addTask = async () => {
+    if (!title || !description) {
+      alert("Please fill in both title and description.");
+      return;
+    }
+
+    try {
+      const tx = await contract.addTask(title, description);
+      await tx.wait(); // Wait for the transaction to be mined
+      alert("Task added successfully!");
+      fetchTasks(contract); // Refresh the task list
+      setTitle(""); // Clear the input fields
+      setDescription("");
+    } catch (error) {
+      console.error("Error adding task:", error);
+      alert("Failed to add task. Check the console for details.");
     }
   };
 
   return (
-    <div>
-      <h1>Blockchain Task Manager</h1>
-      <p>Connected Account: {account ? account : "Not connected"}</p>
-      <button onClick={loadTasks}>Load Tasks</button>
+    <Container>
+      <Typography variant="h3" align="center" gutterBottom>
+        Blockchain Task Manager
+      </Typography>
 
-      {tasks.length === 0 ? <p>No tasks available.</p> : null}
+      {/* Add Task Form */}
+      <Card>
+        <CardContent>
+          <TextField
+            label="Title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="Description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            fullWidth
+            margin="normal"
+          />
+          <Button variant="contained" color="primary" onClick={addTask}>
+            Add Task
+          </Button>
+        </CardContent>
+      </Card>
 
-      {tasks.map((task, index) => (
-        <div key={index}>
-          <h3>{task.title}</h3>
-          <p>{task.description}</p>
-        </div>
-      ))}
-    </div>
+      {/* Display Tasks */}
+      <List>
+        {tasks.map((task) => (
+          task.id !== 0 && (
+            <Card key={task.id} style={{ marginTop: "10px" }}>
+              <CardContent>
+                <ListItem>
+                  <ListItemText
+                    primary={task.title}
+                    secondary={task.description}
+                  />
+                </ListItem>
+              </CardContent>
+            </Card>
+          )
+        ))}
+      </List>
+    </Container>
   );
 }
 
