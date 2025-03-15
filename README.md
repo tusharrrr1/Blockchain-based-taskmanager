@@ -29,7 +29,7 @@ npx hardhat run scripts/deploy.js --network sepolia
 
 ### **3️⃣ Sample Deployed Contract Address (Testnet)**
 ```
-0x9543Ac03e580B22Fc8cE044EF3792F1e96AB6083
+0x7d274F2C30C2F4A458F15Ae8ef7a3608d140828D
 ```
 
 ---
@@ -101,8 +101,7 @@ npm start
 ---
 ## ✅ To-Do
 - [ ] Add WalletConnect integration
-- [ ] Improve UI design with TailwindCSS
-- [ ] Enable real-time updates using event listeners
+
 
 ---
 ## 📜 License
